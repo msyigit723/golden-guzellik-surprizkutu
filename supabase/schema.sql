@@ -95,11 +95,60 @@ CREATE INDEX idx_spins_user_id ON spins(user_id);
 CREATE INDEX idx_spins_campaign_id ON spins(campaign_id);
 CREATE INDEX idx_spins_delivery ON spins(is_delivered);
 
+-- Spin Sonuçları table (Historical snapshot table)
+CREATE TABLE IF NOT EXISTS spin_sonuçları (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  campaign_id UUID REFERENCES campaigns(id) ON DELETE SET NULL,
+  prize_id UUID REFERENCES prizes(id) ON DELETE SET NULL,
+  user_name_snapshot VARCHAR(100),
+  user_surname_snapshot VARCHAR(100),
+  user_phone_snapshot VARCHAR(20),
+  user_email_snapshot VARCHAR(255),
+  prize_title_snapshot VARCHAR(200),
+  probability_snapshot DECIMAL(10,2),
+  color_snapshot VARCHAR(20),
+  icon_snapshot VARCHAR(50),
+  image_snapshot TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_spin_sonuclari_user_id ON spin_sonuçları(user_id);
+CREATE INDEX idx_spin_sonuclari_campaign_id ON spin_sonuçları(campaign_id);
+CREATE INDEX idx_spin_sonuclari_created_at ON spin_sonuçları(created_at DESC);
+
+ALTER TABLE spin_sonuçları ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view own spin_sonuclari" 
+  ON spin_sonuçları FOR SELECT 
+  USING (
+    user_id::text = current_setting('request.jwt.claim.userId', true) 
+    OR 
+    user_id::text = current_setting('request.jwt.claim.sub', true)
+  );
+
+CREATE POLICY "Admins can view all spin_sonuclari" 
+  ON spin_sonuçları FOR SELECT 
+  USING (
+    current_setting('request.jwt.claim.role', true) = 'admin' 
+    OR 
+    TRUE
+  );
+
 -- Create RPC for atomic spin claim
 CREATE OR REPLACE FUNCTION claim_prize(p_user_id UUID, p_campaign_id UUID, p_prize_id UUID)
 RETURNS JSON AS $$
 DECLARE
   v_stock INT;
+  v_prize_title VARCHAR(200);
+  v_probability DECIMAL(10,2);
+  v_bg_color VARCHAR(20);
+  v_text_color VARCHAR(20);
+  v_icon VARCHAR(50);
+  v_image_url TEXT;
+  v_user_name VARCHAR(100);
+  v_user_surname VARCHAR(100);
+  v_user_phone VARCHAR(20);
 BEGIN
   -- Check if already spun
   IF EXISTS (SELECT 1 FROM spins WHERE user_id = p_user_id) THEN
@@ -107,7 +156,8 @@ BEGIN
   END IF;
 
   -- Lock the prize row for update to prevent concurrent stock depletion
-  SELECT stock INTO v_stock 
+  SELECT stock, title, probability, bg_color, text_color, icon, image_url 
+  INTO v_stock, v_prize_title, v_probability, v_bg_color, v_text_color, v_icon, v_image_url
   FROM prizes 
   WHERE id = p_prize_id AND is_active = TRUE 
   FOR UPDATE;
@@ -116,12 +166,31 @@ BEGIN
     RETURN json_build_object('success', false, 'error', 'out_of_stock');
   END IF;
 
+  -- Capture user snapshots
+  SELECT name, surname, phone
+  INTO v_user_name, v_user_surname, v_user_phone
+  FROM users
+  WHERE id = p_user_id;
+
   -- Decrease stock
   UPDATE prizes SET stock = stock - 1 WHERE id = p_prize_id;
 
-  -- Record the spin
+  -- Record the spin in the existing `spins` table
   INSERT INTO spins (user_id, campaign_id, prize_id) 
   VALUES (p_user_id, p_campaign_id, p_prize_id);
+
+  -- Record the detailed snapshot in `spin_sonuçları`
+  INSERT INTO spin_sonuçları (
+    user_id, campaign_id, prize_id, 
+    user_name_snapshot, user_surname_snapshot, user_phone_snapshot,
+    prize_title_snapshot, probability_snapshot, color_snapshot, 
+    icon_snapshot, image_snapshot
+  ) VALUES (
+    p_user_id, p_campaign_id, p_prize_id,
+    v_user_name, v_user_surname, v_user_phone,
+    v_prize_title, v_probability, v_bg_color, 
+    v_icon, v_image_url
+  );
 
   RETURN json_build_object('success', true);
 END;
