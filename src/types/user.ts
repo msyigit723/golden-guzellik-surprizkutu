@@ -1,7 +1,7 @@
 export interface User {
   id: string;
-  name: string;
-  surname: string;
+  name: string | null;
+  surname: string | null;
   phone: string;
   created_at: string;
 }

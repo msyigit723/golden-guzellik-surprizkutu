@@ -3,19 +3,55 @@
 import * as React from 'react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { validatePhone, validateRequired } from '@/utils/validation';
 
 export default function LandingPage() {
   const [phone, setPhone] = React.useState('');
+  const [error, setError] = React.useState('');
+  const [isLoading, setIsLoading] = React.useState(false);
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     // Only allow digits
     const value = e.target.value.replace(/\D/g, '').slice(0, 11);
     setPhone(value);
+    if (error) setError('');
   };
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    // The button does NOT need to work yet.
+    setError('');
+
+    if (!validateRequired(phone)) {
+      setError('Lütfen telefon numaranızı girin.');
+      return;
+    }
+
+    if (!validatePhone(phone)) {
+      setError('Geçersiz telefon formatı. Örn: 05XXXXXXXXX');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const res = await fetch('/api/auth/phone', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ phone }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Bir hata oluştu.');
+      }
+
+      // Redirect to wheel page
+      window.location.href = '/cark';
+    } catch (err: any) {
+      setError(err.message || 'Bir hata oluştu.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -44,6 +80,8 @@ export default function LandingPage() {
           placeholder="05XX XXX XX XX"
           value={phone}
           onChange={handlePhoneChange}
+          error={error}
+          disabled={isLoading}
           autoComplete="tel"
         />
 
@@ -51,6 +89,7 @@ export default function LandingPage() {
           type="submit"
           size="lg"
           className="w-full"
+          isLoading={isLoading}
         >
           ÇARKI ÇEVİRMEYE BAŞLA
         </Button>

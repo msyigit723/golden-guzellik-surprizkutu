@@ -8,8 +8,8 @@ export default async function proxy(request: NextRequest) {
 
   // --- Rate Limiting Logic ---
   
-  // 1. Strict Auth Limit (Login & Register APIs)
-  if (pathname === '/api/login' || pathname === '/api/register' || pathname === '/api/admin/login') {
+  // 1. Strict Auth Limit (Phone auth API)
+  if (pathname === '/api/auth/phone') {
     if (rateLimiters.auth) {
       const { success } = await rateLimiters.auth.limit(ip);
       if (!success) return NextResponse.json({ error: 'Çok fazla istek. Lütfen 15 dakika bekleyin.' }, { status: 429 });
@@ -42,8 +42,8 @@ export default async function proxy(request: NextRequest) {
   
   const token = request.cookies.get('gbs-token');
 
-  // Prevent authenticated users from accessing login/register
-  if (pathname === '/giris' || pathname === '/kayit') {
+  // Landing page: if already authenticated, redirect to wheel
+  if (pathname === '/') {
     if (token) {
       return NextResponse.redirect(new URL('/cark', request.url));
     }
@@ -53,7 +53,7 @@ export default async function proxy(request: NextRequest) {
   // Protected User Routes
   if (pathname.startsWith('/cark') || pathname.startsWith('/sonuc')) {
     if (!token) {
-      return NextResponse.redirect(new URL('/giris', request.url));
+      return NextResponse.redirect(new URL('/', request.url));
     }
     return NextResponse.next();
   }

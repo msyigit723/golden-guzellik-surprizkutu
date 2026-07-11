@@ -3,13 +3,13 @@
 -- ================================================
 
 -- Users table
--- No has_spun column: spin status derived from spin_results
+-- Phone-only authentication: name, surname, password_hash are optional
 CREATE TABLE users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name VARCHAR(100) NOT NULL,
-  surname VARCHAR(100) NOT NULL,
+  name VARCHAR(100),
+  surname VARCHAR(100),
   phone VARCHAR(20) UNIQUE NOT NULL,
-  password_hash TEXT NOT NULL,
+  password_hash TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
