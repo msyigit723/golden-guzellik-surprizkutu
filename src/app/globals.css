@@ -1,15 +1,22 @@
 @import "tailwindcss";
 
 @theme {
+  --color-luxury-bg-primary: #090909;
+  --color-luxury-bg-secondary: #141414;
+  --color-luxury-surface: #1C1C1C;
+  
   --color-luxury-gold: #D4AF37;
-  --color-luxury-black: #1A1A1A;
-  --color-luxury-white: #FFFFFF;
-  --color-luxury-charcoal: #2C2C2C;
-  --color-luxury-cream: #F5F5F0;
-  --color-luxury-champagne: #E8E0D0;
+  --color-luxury-gold-highlight: #FFD700;
+  --color-luxury-gold-soft: #F5E6A7;
+  
+  --color-luxury-text: #FFFFFF;
+  --color-luxury-text-muted: #B8B8B8;
+  --color-luxury-black: #090909; /* Fallback for legacy components */
+  --color-luxury-white: #FFFFFF; /* Fallback for legacy components */
 
-  --shadow-soft: 0 4px 20px rgba(0, 0, 0, 0.08);
+  --shadow-soft: 0 4px 20px rgba(0, 0, 0, 0.4);
   --shadow-premium: 0 8px 30px rgba(212, 175, 55, 0.15);
+  --shadow-premium-hover: 0 12px 40px rgba(212, 175, 55, 0.25);
 
   --radius-lg: 0.75rem;
   --radius-xl: 1rem;
@@ -18,15 +25,8 @@
 
 @layer base {
   :root {
-    --background: var(--color-luxury-white);
-    --foreground: var(--color-luxury-black);
-  }
-
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --background: var(--color-luxury-black);
-      --foreground: var(--color-luxury-white);
-    }
+    --background: var(--color-luxury-bg-primary);
+    --foreground: var(--color-luxury-text);
   }
 
   html, body {

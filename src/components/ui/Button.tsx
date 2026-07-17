@@ -21,7 +21,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
           {
             'bg-luxury-gold text-luxury-black hover:bg-[#c29e2f] active:scale-95 shadow-premium':
               variant === 'primary',
-            'bg-luxury-black text-luxury-white hover:bg-luxury-charcoal':
+            'bg-luxury-surface text-luxury-white hover:bg-white/10':
               variant === 'secondary',
             'border border-luxury-gold text-luxury-gold hover:bg-luxury-gold/10':
               variant === 'outline',
