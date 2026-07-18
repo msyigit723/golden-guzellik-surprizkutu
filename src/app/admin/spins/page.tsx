@@ -11,6 +11,7 @@ type SpinRecord = {
   delivery_note: string | null;
   created_at: string;
   users: { name: string; surname: string; phone: string };
+  campaign_slug: string | null;
   campaigns: { title: string };
   prizes: { title: string };
 };
@@ -82,7 +83,7 @@ export default function AdminSpinsPage() {
       s.users?.name,
       s.users?.surname,
       s.users?.phone,
-      s.campaigns?.title,
+      `${s.campaigns?.title} (${s.campaign_slug})`,
       s.prizes?.title,
       s.is_delivered ? 'Teslim Edildi' : 'Bekliyor',
       s.delivery_note || ''
@@ -108,7 +109,7 @@ export default function AdminSpinsPage() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-serif font-bold">Kazananlar & Teslimat</h1>
-          <p className="text-sm text-gray-500">Çarkı çeviren kullanıcıları yönetin ve CSV olarak dışa aktarın.</p>
+          <p className="text-sm text-gray-500">Hediye kazanan kullanıcıları yönetin ve CSV olarak dışa aktarın.</p>
         </div>
         <Button onClick={exportCSV} className="bg-green-600 hover:bg-green-700">CSV İndir</Button>
       </div>
@@ -150,7 +151,8 @@ export default function AdminSpinsPage() {
                     <td className="px-6 py-4">{spin.users?.phone}</td>
                     <td className="px-6 py-4">
                       <div className="font-bold text-luxury-gold">{spin.prizes?.title}</div>
-                      <div className="text-xs text-gray-500">{spin.campaigns?.title}</div>
+                      <div className="text-sm font-medium text-gray-800 mt-1">{spin.campaigns?.title}</div>
+                      <div className="text-[10px] text-gray-400 font-mono mt-0.5">{spin.campaign_slug}</div>
                     </td>
                     <td className="px-6 py-4">
                       {spin.is_delivered ? (

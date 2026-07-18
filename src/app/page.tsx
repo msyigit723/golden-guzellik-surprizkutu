@@ -45,8 +45,8 @@ export default function LandingPage() {
         throw new Error(data.error || 'Bir hata oluştu.');
       }
 
-      // Redirect to wheel page
-      window.location.href = '/cark';
+      // Redirect to gift box page
+      window.location.href = '/hediye';
     } catch (err: any) {
       setError(err.message || 'Bir hata oluştu.');
     } finally {
@@ -62,14 +62,14 @@ export default function LandingPage() {
       </div>
 
       <h1 className="mb-3 font-serif text-3xl font-bold tracking-tight text-luxury-black sm:text-4xl">
-        Golden Güzellik Çarkı
+        Golden Güzellik Sürpriz Kutu
       </h1>
 
       <p className="mb-2 max-w-sm text-base text-gray-600">
         Telefon numaranızı girerek kampanyaya katılabilirsiniz.
       </p>
       <p className="mb-8 max-w-sm text-sm text-gray-500">
-        Her telefon numarası yalnızca 1 kez çark çevirebilir.
+        Her telefon numarası yalnızca 1 kez hediye seçebilir.
       </p>
 
       <form onSubmit={handleSubmit} className="w-full max-w-sm space-y-4">
@@ -91,7 +91,7 @@ export default function LandingPage() {
           className="w-full"
           isLoading={isLoading}
         >
-          ÇARKI ÇEVİRMEYE BAŞLA
+          HEDİYE SEÇMEYE BAŞLA
         </Button>
       </form>
     </div>

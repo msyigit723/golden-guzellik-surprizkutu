@@ -22,6 +22,7 @@ export async function GET(request: NextRequest) {
         delivery_note,
         created_at,
         users!inner(name, surname, phone),
+        campaign_slug,
         campaigns(title),
         prizes(title)
       `)

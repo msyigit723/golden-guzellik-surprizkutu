@@ -14,16 +14,29 @@ export default async function ResultPage() {
     const payload = verifyUserToken(token);
     if (payload) {
       try {
-        const { data: existingSpin, error } = await supabase
-          .from('spin_sonuçları')
-          .select('prize_title_snapshot')
-          .eq('user_id', payload.userId)
-          .order('created_at', { ascending: false })
+        const now = new Date().toISOString();
+        const { data: activeCampaign } = await supabase
+          .from('campaigns')
+          .select('id')
+          .eq('active', true)
+          .eq('is_deleted', false)
+          .or(`end_date.is.null,end_date.gt.${now}`)
           .limit(1)
           .single();
-          
-        if (existingSpin && !error) {
-          prizeTitle = existingSpin.prize_title_snapshot || '';
+
+        if (activeCampaign) {
+          const { data: existingSpin, error } = await supabase
+            .from('spin_sonuçları')
+            .select('prize_title_snapshot')
+            .eq('user_id', payload.userId)
+            .eq('campaign_id', activeCampaign.id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+            
+          if (existingSpin && !error) {
+            prizeTitle = existingSpin.prize_title_snapshot || '';
+          }
         }
       } catch (err) {
         console.error('Error fetching spin result:', err);

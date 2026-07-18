@@ -29,10 +29,15 @@ export async function GET(request: NextRequest) {
       .limit(1)
       .single();
 
+    if (!activeCampaign) {
+      return NextResponse.json({ hasSpun: false }, { status: 200 });
+    }
+
     const { data: existingSpin, error } = await supabase
       .from('spins')
       .select('prize_id, prizes(title)')
       .eq('user_id', userId)
+      .eq('campaign_id', activeCampaign.id)
       .single();
 
     if (error && error.code !== 'PGRST116') { // PGRST116 is "No rows found"

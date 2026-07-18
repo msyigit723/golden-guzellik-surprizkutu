@@ -26,28 +26,12 @@ export async function POST(request: NextRequest) {
 
     const userId = payload.userId;
 
-    // Check if user already spun
-    const { data: existingSpin } = await supabase
-      .from('spins')
-      .select('prize_id, prizes(title)')
-      .eq('user_id', userId)
-      .single();
-
-    if (existingSpin) {
-      return NextResponse.json({ 
-        error: 'Zaten çevirme hakkınızı kullandınız.',
-        prize_id: existingSpin.prize_id,
-        title: (existingSpin.prizes as any)?.title
-      }, { status: 403 });
-    }
-
     const now = new Date().toISOString();
     
-    // Fetch active campaigns (assuming one active campaign for the wheel)
-    // Enforce temporal expiration: end_date must be null or in the future
+    // Fetch active campaigns (automatically resolves from DB without hardcoding)
     const { data: activeCampaign } = await supabase
       .from('campaigns')
-      .select('id')
+      .select('id, slug')
       .eq('active', true)
       .eq('is_deleted', false)
       .or(`end_date.is.null,end_date.gt.${now}`)
@@ -56,6 +40,22 @@ export async function POST(request: NextRequest) {
 
     if (!activeCampaign) {
       return NextResponse.json({ error: 'Aktif kampanya bulunmamaktadır.' }, { status: 400 });
+    }
+
+    // Check if user already spun in THIS ACTIVE CAMPAIGN
+    const { data: existingSpin } = await supabase
+      .from('spins')
+      .select('prize_id, prizes(title)')
+      .eq('user_id', userId)
+      .eq('campaign_id', activeCampaign.id)
+      .single();
+
+    if (existingSpin) {
+      return NextResponse.json({ 
+        error: 'Zaten bu kampanya için çevirme hakkınızı kullandınız.',
+        prize_id: existingSpin.prize_id,
+        title: (existingSpin.prizes as any)?.title
+      }, { status: 403 });
     }
 
     // Fetch active prizes with stock > 0 for this campaign
@@ -84,6 +84,7 @@ export async function POST(request: NextRequest) {
       const { data: rpcResult, error: rpcError } = await supabase.rpc('claim_prize', {
         p_user_id: userId,
         p_campaign_id: activeCampaign.id,
+        p_campaign_slug: activeCampaign.slug || 'surpriz_kutu',
         p_prize_id: selectedPrize.id
       });
 

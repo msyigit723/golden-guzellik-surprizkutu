@@ -29,6 +29,7 @@ CREATE TABLE admins (
 CREATE TABLE campaigns (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   title VARCHAR(200) NOT NULL,
+  slug VARCHAR(50) UNIQUE,
   description TEXT,
   probability DECIMAL(10,2) NOT NULL CHECK (probability >= 0),
   display_order INTEGER NOT NULL DEFAULT 0,
@@ -63,6 +64,7 @@ FOR EACH ROW EXECUTE FUNCTION enforce_single_active_campaign();
 CREATE TABLE prizes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   campaign_id UUID NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
+  campaign_slug VARCHAR(50),
   title VARCHAR(200) NOT NULL,
   probability DECIMAL(10,2) NOT NULL CHECK (probability >= 0),
   stock INTEGER NOT NULL DEFAULT 0 CHECK (stock >= 0),
@@ -83,12 +85,14 @@ CREATE INDEX idx_prizes_order ON prizes(display_order);
 -- Spins table (Single source of truth for spins)
 CREATE TABLE spins (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES users(id) NOT NULL UNIQUE,
+  user_id UUID REFERENCES users(id) NOT NULL,
   campaign_id UUID REFERENCES campaigns(id) NOT NULL,
+  campaign_slug VARCHAR(50),
   prize_id UUID REFERENCES prizes(id) NOT NULL,
   is_delivered BOOLEAN DEFAULT FALSE,
   delivery_note TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(user_id, campaign_id)
 );
 
 CREATE INDEX idx_spins_user_id ON spins(user_id);
@@ -100,6 +104,7 @@ CREATE TABLE IF NOT EXISTS spin_sonuçları (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   campaign_id UUID REFERENCES campaigns(id) ON DELETE SET NULL,
+  campaign_slug VARCHAR(50),
   prize_id UUID REFERENCES prizes(id) ON DELETE SET NULL,
   user_name_snapshot VARCHAR(100),
   user_surname_snapshot VARCHAR(100),
@@ -136,7 +141,7 @@ CREATE POLICY "Admins can view all spin_sonuclari"
   );
 
 -- Create RPC for atomic spin claim
-CREATE OR REPLACE FUNCTION claim_prize(p_user_id UUID, p_campaign_id UUID, p_prize_id UUID)
+CREATE OR REPLACE FUNCTION claim_prize(p_user_id UUID, p_campaign_id UUID, p_campaign_slug VARCHAR, p_prize_id UUID)
 RETURNS JSON AS $$
 DECLARE
   v_stock INT;
@@ -150,8 +155,8 @@ DECLARE
   v_user_surname VARCHAR(100);
   v_user_phone VARCHAR(20);
 BEGIN
-  -- Check if already spun
-  IF EXISTS (SELECT 1 FROM spins WHERE user_id = p_user_id) THEN
+  -- Check if already spun in THIS campaign
+  IF EXISTS (SELECT 1 FROM spins WHERE user_id = p_user_id AND campaign_id = p_campaign_id) THEN
     RETURN json_build_object('success', false, 'error', 'already_spun');
   END IF;
 
@@ -176,17 +181,17 @@ BEGIN
   UPDATE prizes SET stock = stock - 1 WHERE id = p_prize_id;
 
   -- Record the spin in the existing `spins` table
-  INSERT INTO spins (user_id, campaign_id, prize_id) 
-  VALUES (p_user_id, p_campaign_id, p_prize_id);
+  INSERT INTO spins (user_id, campaign_id, campaign_slug, prize_id) 
+  VALUES (p_user_id, p_campaign_id, p_campaign_slug, p_prize_id);
 
   -- Record the detailed snapshot in `spin_sonuçları`
   INSERT INTO spin_sonuçları (
-    user_id, campaign_id, prize_id, 
+    user_id, campaign_id, campaign_slug, prize_id, 
     user_name_snapshot, user_surname_snapshot, user_phone_snapshot,
     prize_title_snapshot, probability_snapshot, color_snapshot, 
     icon_snapshot, image_snapshot
   ) VALUES (
-    p_user_id, p_campaign_id, p_prize_id,
+    p_user_id, p_campaign_id, p_campaign_slug, p_prize_id,
     v_user_name, v_user_surname, v_user_phone,
     v_prize_title, v_probability, v_bg_color, 
     v_icon, v_image_url
